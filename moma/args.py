@@ -4,6 +4,13 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description="Moris Manager")
     subparsers = parser.add_subparsers(dest="command")
+    
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Verbose output",
+    )
 
     # ----------------------------------- Store ---------------------------------- #
     store_parser = subparsers.add_parser(
@@ -35,10 +42,25 @@ def parse_args():
         help="Number of processors to use",
     )
     run_parser.add_argument(
-        "--only-shared-object",
+        "--shared-object-only",
         "-so",
         action="store_true",
         help="Only build the shared object",
+    )
+    run_parser.add_argument(
+        "--run-only",
+        action="store_true",
+        help="Do not create the shared object before run",
+    )
+    run_parser.add_argument(
+        "--apply-parameters",
+        action="store_true",
+        help="Apply the parameters from the moris.json to the C++ file",
+    )
+    run_parser.add_argument(
+        "--no-clean",
+        action="store_true",
+        help="Do not clean the directory before running",
     )
     run_parser_build_type = run_parser.add_mutually_exclusive_group()
     run_parser_build_type.add_argument(
@@ -108,5 +130,20 @@ def parse_args():
         action="store_true",
         help="Clean all results",
     )
-
+    clean_parser.add_argument(
+        "--remove-lock",
+        action="store_true",
+        help="Remove the lock file",
+    )
+    
+    # ------------------------------------ New ----------------------------------- #
+    new_parser = subparsers.add_parser(
+        "new",
+        help="Create a new moris",
+    )
+    new_parser.add_argument(
+        "project_name",
+        type=str,
+        help="Name of the new moris project",
+    )
     return parser.parse_args()

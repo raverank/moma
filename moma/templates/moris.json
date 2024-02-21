@@ -1,0 +1,16 @@
+{
+    "project": "%(project_name)s",
+    "clean": [
+        "%(project_name)s.exo",
+        "%(project_name)s.log",
+        "%(project_name)s.so",
+        "xtk_temp.exo*",
+        "Parameter_Receipt.xml",
+        "residuals.png"
+    ],
+    "parameters": {
+        "tNumElementsX": 3,
+        "tNumElementsY": 3,
+        "tNumElementsZ": 3
+    }
+}

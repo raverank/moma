@@ -1,40 +1,23 @@
 from io import BufferedReader
 import logging
 from typing import IO, Any, Callable
-from moma.util import get_log_file, get_moris_config, get_cpp_file
 from pathlib import Path
-import os
+import select
 import threading
 from subprocess import Popen, PIPE
 from moma.log_filter import MorisLogFilter
+from moma.util import (
+    get_log_file,
+    get_moris_config,
+    get_cpp_file,
+    get_moris_root,
+    get_build_dir_name,
+)
 
 logger = logging.getLogger(__name__)
 
-MORIS_CREATE_SHARED_OBJECT = Path
 
-
-def get_env(env: str) -> str:
-    var = os.environ.get(env)
-    if var is None:
-        logger.error(f"Environment variable {env} not set")
-        raise SystemExit(1)
-    return var
-
-
-def get_moris_root() -> Path:
-    root = Path(get_env("MORISROOT")).absolute()
-    if not root.exists():
-        logger.error(f"Directory {root} not found but set as MORISROOT")
-        raise SystemExit(1)
-
-    return root
-
-
-def get_build_dir_name(build_type: str) -> str:
-    if build_type == "dbg":
-        return get_env("MORISBUILDDBG")
-    else:
-        return get_env("MORISBUILDOPT")
+exit_event = threading.Event()
 
 
 def handle_subprocess_stream(
@@ -44,13 +27,28 @@ def handle_subprocess_stream(
     logging_func: Callable[[str], None] | None = None,
 ):
     while True:
-        # Non-blocking check for subprocess completion
-        line = stream.readline().decode("utf8").strip()
-        log_file.write(line + "\n")
-        if logging_func and line:
-            logging_func(line)
-        if process.poll() is not None and stream.peek() == b"":
-            break  # Break if no more data
+        # Check if process has ended or exit_event is set
+        if exit_event.is_set() or process.poll() is not None:
+            break
+        # Use select to wait for I/O readiness, with a timeout to periodically check exit conditions
+        ready_to_read, _, _ = select.select([stream], [], [], 0.05)
+        if stream in ready_to_read:
+            line = stream.readline().decode("utf8").strip()
+            log_file.write(line + "\n")
+            log_file.flush()  # Ensure the line is written out immediately
+            if logging_func and line:
+                logging_func(line)
+        else:
+            # No data to read, loop back and check exit conditions again
+            continue
+
+
+def check_for_lock_file(line: str):
+    if line.startswith("Warning: lock file"):
+        logger.error(
+            "Lock file detected. Check the log for more information. You can use the clean command with the --remove-lock option to remove the lock file."
+        )
+        exit_event.set()
 
 
 def create_shared_object(build_type: str, cpp_file: Path, log_file: IO[Any]):
@@ -69,17 +67,26 @@ def create_shared_object(build_type: str, cpp_file: Path, log_file: IO[Any]):
     cpp_file.with_suffix(".o").unlink(missing_ok=True)
 
     logger.debug(f"Running command: {' '.join(command)}")
-    with Popen(command, stdout=PIPE) as proc:
-        stdout = proc.stdout
-        log_content = ""
-        while proc.poll() is None:
-            if stdout:
-                line = stdout.readline().decode("utf-8").strip()
-                log_file.write(line + "\n")
-                log_content += line + "\n"
+    with Popen(command, stdout=PIPE, stderr=PIPE) as proc:
+        stdout_thread = threading.Thread(
+            target=handle_subprocess_stream,
+            args=(proc, proc.stdout, log_file, check_for_lock_file),
+        )
+        stderr_thread = threading.Thread(
+            target=handle_subprocess_stream,
+            args=(proc, proc.stderr, log_file, lambda line: logger.error(line)),
+        )
+        stdout_thread.start()
+        stderr_thread.start()
+        # Check if the exit_event is set after threads have completed
+        if exit_event.is_set():
+            raise SystemExit(1)
+        stdout_thread.join()
+        stderr_thread.join()
+
         if proc.poll() != 0 or not cpp_file.with_suffix(".so").exists():
             logger.error(
-                f"Failed to create shared object for {cpp_file.stem}:\n{log_content}"
+                f"Failed to create shared object for {cpp_file.stem}. Check the log at {log_file.name}"
             )
             raise SystemExit(1)
         else:
@@ -151,10 +158,11 @@ def run(args):
         log_file.unlink()
 
     with log_file.open("w") as log:
-        logger.info(f"Creating shared object for '{cpp_file.stem}'")
-        create_shared_object(build_type, cpp_file, log)
-        if args.only_shared_object:
-            return
+        if not args.run_only:
+            logger.info(f"Creating shared object for '{cpp_file.stem}'")
+            create_shared_object(build_type, cpp_file, log)
+            if args.shared_object_only:
+                return
 
         logger.info(f"Running moris for '{cpp_file.stem}'")
         run_command = get_moris_run_command(build_type, args.processors, cpp_file)

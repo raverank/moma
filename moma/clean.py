@@ -1,9 +1,17 @@
 from pathlib import Path
 import logging
-from moma.util import get_moris_config
+from moma.util import get_moris_config, get_moris_root
 
 logger = logging.getLogger(__name__)
 
+def remove_lock():
+    root = get_moris_root()
+    lock_path = root / "projects" / "mains" / "input_file.locked"
+    if lock_path.exists():
+        lock_path.unlink()
+        logger.info("Removed lock file")
+    else:
+        logger.info("No lock file to remove")
 
 
 def clean_dir(args):
