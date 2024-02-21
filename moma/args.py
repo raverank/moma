@@ -53,6 +53,49 @@ def parse_args():
         action="store_true",
         help="Run the optimized version of moris",
     )
+    
+    # ----------------------------------- Post ----------------------------------- #
+    post_parser = subparsers.add_parser(
+        "post",
+        help="Post process the results",
+    )
+    post_subparsers = post_parser.add_subparsers(dest="post_command")
+    
+    # residuals
+    post_subparsers.add_parser(
+        "residuals",
+        help="Plot the residuals",
+    )
+    
+    # extract
+    extract_parser = post_subparsers.add_parser(
+        "extract",
+        help="Extract the results",
+    )
+    extract_parser.add_argument(
+        "--marker",
+        "-m",
+        type=str,
+        help="Name of the marker that indicates which lines to extract",
+    )
+    extract_parser.add_argument(
+        "--sep",
+        type=str,
+        default=",",
+        help="Separator for the values",
+    )
+    extract_parser.add_argument(
+        "--header",
+        type=str,
+        help="Header for the csv file. Has to have the same number of columns as the values. All column names have to be separated by the separator.",
+    )
+    extract_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default="extracted.csv",
+        help="Output file",
+    )
 
     # ----------------------------------- Clean ---------------------------------- #
     clean_parser = subparsers.add_parser(

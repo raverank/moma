@@ -18,7 +18,9 @@ def clean_dir(args):
         "Parameter_Receipt.xml",
         "debug_mesh_*.json",
         "mapping_result_*.json",
-        "surface_meshes_*.json"
+        "surface_meshes_*.json",
+        "newton_iterations.csv",
+        "residuals.png",
     ]
     
     num_files_removed = 0

@@ -90,7 +90,6 @@ def get_moris_run_command(
     build_type: str,
     processors: int,
     cpp_file: Path,
-    run_prefix: str = "",
 ) -> list[str]:
     moris_root = get_moris_root()
     build_dir = get_build_dir_name(build_type)
@@ -100,10 +99,9 @@ def get_moris_run_command(
         logger.error(f"moris command not found at {moris_command}")
         raise SystemExit(1)
     return [
-        # "mpirun",
-        # "-np",
-        # str(processors),
-        # run_prefix,
+        "mpirun",
+        "-np",
+        str(processors),
         str(moris_command),
         str(cpp_file.with_suffix(".so")),
     ]
@@ -131,7 +129,7 @@ def run_moris(command: list[str], log_file: IO[Any]):
             logger.error("moris run failed")
             raise SystemExit(1)
         else:
-            logger.info("moris run completed successfully")
+            logger.info("Moris run completed successfully")
 
 
 def get_build_type(args):

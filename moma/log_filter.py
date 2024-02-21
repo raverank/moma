@@ -51,7 +51,7 @@ class NewtonIteration:
                     self.properties[key] = float(match.group(1))
 
     def log(self):
-        text = f"Newton Iteration {self.properties['Iteration']}, "
+        text = f"Newton Iteration {self.properties['Iteration']}:"
         row = 0
         for key, value in self.properties.items():
             if key != "Iteration":
@@ -62,6 +62,7 @@ class NewtonIteration:
         logger.info(text)
         with open(self.csv_path, "a") as csv_file:
             csv_file.write(",".join(str(value) for value in self.properties.values()) + "\n")
+        self._reset()
         
         
     def _reset(self):
@@ -88,13 +89,22 @@ class MorisLogFilter:
             self.newton_iteration.parse_line(line)
             if self.newton_iteration.is_complete():
                 self.newton_iteration.log()
+            self._log_walltime(line)
 
     def _log_section(self):
         newest_section = self.sections[-1]
         logger.info(
             f"{newest_section[0]}: {newest_section[1]} - {newest_section[2]} - {newest_section[3]}"
         )
-
+        
+    def _log_walltime(self, line: str) -> bool:
+        search_str = "Global Clock Stopped. ElapsedTime = "
+        if line.startswith(search_str):
+            walltime = line.lstrip(search_str)
+            logger.info(f"Walltime: {walltime}")
+            return True
+        return False
+    
     def _parse_section(self, line: str) -> bool:
         regex = re.compile(r"(?:\|  )*\|__(.*)\s-\s(.*)\s-\s(.*)")
         if match := regex.match(line):
