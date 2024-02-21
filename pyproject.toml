@@ -1,0 +1,18 @@
+[project]
+name = "moma"
+version = "0.1.0"
+dependencies = [
+    "ruff>=0.0.1", # Specify the version of ruff you want to use
+]
+requires-python = ">=3.7"
+
+[project.scripts]
+moma = "moma:moma.main" # Adjust based on your project structure
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+# You can specify ruff configurations here, e.g., include or exclude certain files.
+# Note that as of my last update, ruff configuration might primarily be done through command line or a separate ruff config file.
